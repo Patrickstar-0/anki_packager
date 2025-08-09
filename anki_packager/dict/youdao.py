@@ -3,7 +3,7 @@ import re
 import shutil
 import tempfile
 import requests
-from gtts import gTTS
+import pyttsx3
 from bs4 import BeautifulSoup
 from typing import Dict, Optional
 from anki_packager.logger import logger
@@ -20,9 +20,27 @@ class YoudaoScraper:
     def _get_audio(self, word: str):
         """return the filename of the audio and the temp directory that needs to be cleaned up"""
         filename = os.path.join(self.tmp, f"{word}.mp3")
-        tts = gTTS(text=word, lang="en")
-        tts.save(filename)
-        return filename
+        try:
+            # 初始化pyttsx3引擎
+            engine = pyttsx3.init()
+            # 设置属性（可选）
+            voices = engine.getProperty('voices')
+            # 尝试选择英语语音
+            for voice in voices:
+                if 'english' in voice.id.lower() or 'en' in voice.id.lower():
+                    engine.setProperty('voice', voice.id)
+                    break
+            engine.setProperty('rate', 150)  # 语速
+            # 保存语音文件
+            engine.save_to_file(word, filename)
+            engine.runAndWait()
+            return filename
+        except Exception as e:
+            logger.error(f"使用pyttsx3生成音频失败: {e}")
+            # 如果pyttsx3失败，尝试创建一个空文件以避免后续错误
+            with open(filename, 'w') as f:
+                f.write('')
+            return filename
 
     def _clean_temp_dir(self):
         """Clean up a temporary directory and its contents."""
